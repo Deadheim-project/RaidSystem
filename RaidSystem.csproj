@@ -10,7 +10,7 @@
     <TargetFrameworkVersion>v4.7.2</TargetFrameworkVersion>
     <ApplicationVersion>1.0.0.0</ApplicationVersion>
     <FileAlignment>512</FileAlignment>
-    <LangVersion>10</LangVersion>
+    <LangVersion>9</LangVersion>
     <RootNamespace>RaidSystem</RootNamespace>
     <NuGetPackageImportStamp>
     </NuGetPackageImportStamp>
@@ -39,10 +39,13 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="DiscordApi.cs" />
+    <Compile Include="GUI.cs" />
+    <Compile Include="GUIChooseTeam.cs" />
     <Compile Include="Patches.cs" />
-    <Compile Include="JsonLoader.cs" />
+    <Compile Include="PlayerInfoService.cs" />
     <Compile Include="RaidSystem.cs" />
     <Compile Include="RPC.cs" />
+    <Compile Include="Util.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="app.config" />
@@ -89,11 +92,30 @@
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\Valheim\unstripped_corlib\UnityEngine.CoreModule.dll</HintPath>
     </Reference>
+    <Reference Include="UnityEngine.IMGUIModule">
+      <HintPath>..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\Valheim\unstripped_corlib\UnityEngine.IMGUIModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.InputLegacyModule">
+      <HintPath>..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\Valheim\unstripped_corlib\UnityEngine.InputLegacyModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.InputModule, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\Valheim\unstripped_corlib\UnityEngine.InputModule.dll</HintPath>
+    </Reference>
     <Reference Include="UnityEngine.ParticleSystemModule">
       <HintPath>..\..\..\Desktop\valheimRfs\unity\UnityEngine.ParticleSystemModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.PhysicsModule">
       <HintPath>..\..\..\Desktop\valheimRfs\unity\UnityEngine.PhysicsModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.TextRenderingModule">
+      <HintPath>..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\Valheim\unstripped_corlib\UnityEngine.TextRenderingModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.UI">
+      <HintPath>..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\Valheim\unstripped_corlib\UnityEngine.UI.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.UIModule">
+      <HintPath>..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\Valheim\unstripped_corlib\UnityEngine.UIModule.dll</HintPath>
     </Reference>
   </ItemGroup>
   <ItemGroup>

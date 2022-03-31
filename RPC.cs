@@ -3,7 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.IO;
-using static RaidSystem.JsonLoader;
+using static RaidSystem.PlayerInfoService;
 
 namespace RaidSystem
 {
@@ -26,6 +26,9 @@ namespace RaidSystem
             if (File.Exists(FileLocation))
             {
                 playerInfoList.Write((File.ReadAllText(FileLocation)));
+            } else
+            {
+                pkg.Write("");
             }
 
             ZRoutedRpc.instance.InvokeRoutedRPC(sender, "FileSyncClient", playerInfoList);
@@ -33,8 +36,11 @@ namespace RaidSystem
 
         public static void RPC_FileSyncClient(long sender, ZPackage pkg)
         {
+            if (ZNet.instance.IsServer()) return;
             string json = pkg.ReadString();
-            new JsonLoader().GetPlayerInfoList(json);
+            if (json == "") return;
+            new PlayerInfoService().SetPlayerInfoList(json);
+            GUI.LoadMenu();
         }
 
         public static void RPC_UpdateOrSaveData(long sender, ZPackage pkg)
@@ -52,7 +58,7 @@ namespace RaidSystem
 
             if (!Directory.Exists(RaidSystem.FileDirectory)) Directory.CreateDirectory(RaidSystem.FileDirectory);
             if (!File.Exists(FileLocation)) File.Create(FileLocation);
-            else playerInfoList = new JsonLoader().GetPlayerInfoList(File.ReadAllText(FileLocation));
+            else playerInfoList = new PlayerInfoService().GetPlayerInfoList(File.ReadAllText(FileLocation));
 
             PlayerInfo playerInfo = playerInfoList.FirstOrDefault(x => x.PlayerId == playerId);
             if (playerInfo is null)
@@ -69,8 +75,10 @@ namespace RaidSystem
 
             string playerInfoListJson = SimpleJson.SimpleJson.SerializeObject(playerInfoList);
             File.WriteAllText(FileLocation, playerInfoListJson);
+            ZPackage package = new ZPackage();
+            package.Write(playerInfoListJson);
 
-            ZRoutedRpc.instance.InvokeRoutedRPC(ZRoutedRpc.Everybody, "FileSyncClient", playerInfoList);
+            ZRoutedRpc.instance.InvokeRoutedRPC(ZRoutedRpc.Everybody, "FileSyncClient", package);
         }
 
         [HarmonyPatch(typeof(Game), "Start")]
@@ -82,7 +90,7 @@ namespace RaidSystem
                     return;
 
                 ZRoutedRpc.instance.Register<ZPackage>("FileSync", new Action<long, ZPackage>(RPC_FileSync));
-                ZRoutedRpc.instance.Register<ZPackage>("FileSync", new Action<long, ZPackage>(RPC_FileSync));
+                ZRoutedRpc.instance.Register<ZPackage>("FileSyncClient", new Action<long, ZPackage>(RPC_FileSyncClient));
                 ZRoutedRpc.instance.Register<ZPackage>("UpdateOrSaveData", new Action<long, ZPackage>(RPC_UpdateOrSaveData));
             }
         }
