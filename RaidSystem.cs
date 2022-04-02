@@ -9,6 +9,7 @@ using Jotunn.Utils;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using static RaidSystem.PlayerInfoService;
+using Jotunn;
 
 namespace RaidSystem
 {
@@ -18,7 +19,7 @@ namespace RaidSystem
     public class RaidSystem : BaseUnityPlugin
     {
         public const string PluginGUID = "Detalhes.RaidSystem";
-        public const string Version = "1.0.0";
+        public const string Version = "1.1.0";
         Harmony harmony = new Harmony(PluginGUID);
         public static readonly string ModPath = Path.GetDirectoryName(typeof(RaidSystem).Assembly.Location);
 
@@ -26,6 +27,12 @@ namespace RaidSystem
         public static ConfigEntry<string> TeamRedPrefab;
         public static ConfigEntry<string> TeamBlueAlias;
         public static ConfigEntry<string> TeamRedAlias;
+        public static ConfigEntry<float> ColorAlfa;
+
+
+        public static ConfigEntry<string> TeamBlueColorOverlap;
+        public static ConfigEntry<string> TeamRedColorOverlap;
+
         public static ConfigEntry<string> WebhookUrl;
         public static ConfigEntry<string> AdminList;
 
@@ -62,6 +69,22 @@ namespace RaidSystem
         {
             Config.SaveOnConfigSet = true;
 
+            ColorAlfa = Config.Bind("Server config", "ColorAlfa",0.7f,
+new ConfigDescription("0.1f,1f", null,
+new ConfigurationManagerAttributes { IsAdminOnly = true }));
+
+            TeamRedColorOverlap = Config.Bind("Server config", "TeamRedColorOverlap", "red",
+new ConfigDescription("blue,red,blue,green,cyan,clear,grey,magentawhite,black,yellow,gray", null,
+new ConfigurationManagerAttributes { IsAdminOnly = true }));
+
+            TeamBlueColorOverlap = Config.Bind("Server config", "TeamBlueColorOverlap", "blue",
+new ConfigDescription("blue,red,blue,green,cyan,clear,grey,magentawhite,black,yellow,gray", null,
+new ConfigurationManagerAttributes { IsAdminOnly = true }));
+
+
+            TeamMemberListText = Config.Bind("Text Server config", "TeamMemberListText", "Realm Members: ",
+new ConfigDescription("TeamMemberListText", null,
+new ConfigurationManagerAttributes { IsAdminOnly = true }));
 
             TerritoriesConquestedText = Config.Bind("Text Server config", "TerritoriesConquestedText", "Cities under control:",
 new ConfigDescription("TerritoriesConquestedText", null,
@@ -159,6 +182,7 @@ new ConfigurationManagerAttributes { IsAdminOnly = true }));
                 }
             };
         }
+   
 
         private void Update()
         {

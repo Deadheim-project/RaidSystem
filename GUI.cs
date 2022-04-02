@@ -12,7 +12,7 @@ namespace RaidSystem
     {
         public static void ToggleMenu()
         {
-            if (Player.m_localPlayer && (RaidSystem.Menu && !RaidSystem.Menu.activeSelf))
+            if (RaidSystem.Menu is null || (Player.m_localPlayer && (RaidSystem.Menu && !RaidSystem.Menu.activeSelf)))
             {
                 if (GUIManager.Instance == null)
                 {
@@ -91,7 +91,7 @@ namespace RaidSystem
                 parent: RaidSystem.Menu.transform,
                 anchorMin: new Vector2(0,0),
                 anchorMax: new Vector2(0,0),
-                position: new Vector2(200, 640),
+                position: new Vector2(200, 650),
                 font: GUIManager.Instance.AveriaSerifBold,
                 fontSize: 30,
                 color: GUIManager.Instance.ValheimOrange,
@@ -103,11 +103,11 @@ namespace RaidSystem
             RaidSystem.menuItems.Add("teamText", teamTextObj);
 
             GameObject realmsConquestedText = GUIManager.Instance.CreateText(
-          text: RaidSystem.TerritoriesConquestedText.Value + " " + Util.GetTerritoriesConquestedText(),
+          text: RaidSystem.TerritoriesConquestedText.Value + " " + Util.GetTerritoriesConquestedText(RaidSystem.localPlayerInfo.Team),
           parent: RaidSystem.Menu.transform,
           anchorMin: new Vector2(0, 0),
           anchorMax: new Vector2(0, 0),
-          position: new Vector2(370, 612),
+          position: new Vector2(370, 617),
           font: GUIManager.Instance.AveriaSerifBold,
           fontSize: 18,
           color: GUIManager.Instance.ValheimOrange,
@@ -118,6 +118,13 @@ namespace RaidSystem
           addContentSizeFitter: false);
             RaidSystem.menuItems.Add("realmsConquestedText", realmsConquestedText);
 
+            ZPackage pkg = new();
+            pkg.Write(RaidSystem.localPlayerInfo.Team);
+
+            ZRoutedRpc.instance.InvokeRoutedRPC(ZRoutedRpc.instance.GetServerPeerID(), "TerritoriesSyncRaidSystem", pkg);
+
+
+
             GameObject playerNameObj = GUIManager.Instance.CreateText(
                 text: RaidSystem.localPlayerInfo.Nick,
                 parent: RaidSystem.Menu.transform,
@@ -125,7 +132,7 @@ namespace RaidSystem
                 anchorMax: new Vector2(0,0),
                 position: new Vector2(200, 590),
                 font: GUIManager.Instance.AveriaSerifBold,
-                fontSize: 25,
+                fontSize: 22,
                 color: GUIManager.Instance.ValheimOrange,
                 outline: true,
                 outlineColor: Color.black,
@@ -139,11 +146,11 @@ namespace RaidSystem
             parent: RaidSystem.Menu.transform,
             anchorMin: new Vector2(0, 0),
             anchorMax: new Vector2(0, 0),
-            position: new Vector2(160, 560),
+            position: new Vector2(160, 555),
             contentType: InputField.ContentType.Standard,
             fontSize: 18,
             width: 270f,
-            height: 30f
+            height: 33f
             );
 
             RaidSystem.menuItems.Add("descriptionInputObj", descriptionInputObj);
@@ -153,9 +160,9 @@ namespace RaidSystem
                 parent: RaidSystem.Menu.transform,
                 anchorMin: new Vector2(0f, 0f),
                 anchorMax: new Vector2(0f, 0f),
-                position: new Vector2(360, 560),
+                position: new Vector2(360, 555),
                 width: 90,
-                height: 30f);
+                height: 35f);
             buttonUpdate.SetActive(true);
 
             RaidSystem.menuItems.Add("buttonUpdate", buttonUpdate);
@@ -173,7 +180,7 @@ namespace RaidSystem
     parent: RaidSystem.Menu.transform,
     anchorMin: new Vector2(0, 0),
     anchorMax: new Vector2(0, 0),
-    position: new Vector2(200, 490),
+    position: new Vector2(200, 496),
     font: GUIManager.Instance.AveriaSerifBold,
     fontSize: 25,
     color: GUIManager.Instance.ValheimOrange,
@@ -232,7 +239,7 @@ namespace RaidSystem
                     color: GUIManager.Instance.ValheimOrange,
                     outline: true,
                     outlineColor: Color.black,
-                    width: 150f,
+                    width: 300f,
                     height: 25f,
                     addContentSizeFitter: false);
                 RaidSystem.menuItems.Add("nameText" + Guid.NewGuid(), nameText);
@@ -270,6 +277,14 @@ namespace RaidSystem
                     addContentSizeFitter: false);
                 RaidSystem.menuItems.Add("spacador" + Guid.NewGuid(), spacador);
             }
+        }
+
+        public static void SetTerritoriesConquestText(string text)
+        {
+            GameObject textGameObject = RaidSystem.menuItems["realmsConquestedText"];
+
+            var txt = textGameObject.GetComponent<Text>();
+            txt.text = RaidSystem.TerritoriesConquestedText.Value + " " + text;
         }
     }
 }

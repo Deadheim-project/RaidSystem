@@ -67,12 +67,35 @@ namespace RaidSystem
         {
             private static void Postfix()
             {
-                RaidSystem.AddClonedItems(); // remover
-
                 if (hasAwake == true) return;
                 hasAwake = true;
 
-                ZRoutedRpc.instance.InvokeRoutedRPC(ZRoutedRpc.instance.GetServerPeerID(), "FileSync", new ZPackage());
+                ZRoutedRpc.instance.InvokeRoutedRPC(ZRoutedRpc.instance.GetServerPeerID(), "FileSyncRaidSystem", new ZPackage());
+            }
+        }
+
+        [HarmonyPatch(typeof(PrivateArea), nameof(PrivateArea.RPC_TogglePermitted))]
+        public static class RPC_TogglePermitted
+        {
+            private static bool Prefix(PrivateArea __instance, long uid, long playerID, string name)
+            {
+                string redPrefab = ("RS_" + RaidSystem.TeamRedPrefab.Value);
+                string bluePrefab = ("RS_" + RaidSystem.TeamBluePrefab.Value);
+
+                string prefabName = __instance.m_piece.gameObject.name;
+                if (prefabName.Contains("guard_stone")) return true;
+
+                if (prefabName.Contains(redPrefab))
+                {
+                    if (RaidSystem.PlayerInfoList.Exists(x => x.PlayerId == playerID.ToString() && x.Team == "Red")) return true;
+                }
+
+                if (prefabName.Contains(bluePrefab))
+                {
+                    if (RaidSystem.PlayerInfoList.Exists(x => x.PlayerId == playerID.ToString() && x.Team == "Blue")) return true;
+                }
+
+                return false;
             }
         }
 
@@ -89,7 +112,6 @@ namespace RaidSystem
                     if (!Util.IsRaidEnabledHere(__instance.transform.position)) return false;
                     if (___m_nview is null) return false;
                     if (__instance.gameObject.name.Contains("guard_stone")) return false;
-                    if (__instance.m_piece.m_nview.m_zdo.GetBool("isAdmin")) return false;
 
                     if (Util.IsRaidDisabledThisTime()) return false;
 

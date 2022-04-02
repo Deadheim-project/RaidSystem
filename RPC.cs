@@ -31,7 +31,40 @@ namespace RaidSystem
                 pkg.Write("");
             }
 
-            ZRoutedRpc.instance.InvokeRoutedRPC(sender, "FileSyncClient", playerInfoList);
+            ZRoutedRpc.instance.InvokeRoutedRPC(sender, "FileSyncClientRaidSystem", playerInfoList);
+        }
+
+        public static void RPC_TerritoriesSync(long sender, ZPackage pkg)
+        {
+            if (!ZNet.instance.IsServer()) return;
+            string playerTeam = pkg.ReadString();
+
+            ZPackage pkgToSend = new ZPackage();
+            pkgToSend.Write(Util.GetTerritoriesConquestedText(playerTeam));
+
+            ZRoutedRpc.instance.InvokeRoutedRPC(sender, "TerritoriesClientRaidSystem", pkgToSend);
+        }
+
+        public static void RPC_TerritoriesSyncClient(long sender, ZPackage pkg)
+        {
+            if (ZNet.instance.IsServer()) return;
+            GUI.SetTerritoriesConquestText(pkg.ReadString());
+        }
+
+        public static void RPC_GetTerritoriesInfoToDraw(long sender, ZPackage pkg)
+        {
+            if (!ZNet.instance.IsServer()) return;
+            ZPackage pkgToSend = new ZPackage();
+            pkgToSend.Write(Util.GetTerritoriesInfoInString());
+
+            ZRoutedRpc.instance.InvokeRoutedRPC(sender, "GetTerritoriesInfoToDrawClient", pkgToSend);
+        }
+
+        public static void RPC_GetTerritoriesInfoToDrawClient(long sender, ZPackage pkg)
+        {
+            if (ZNet.instance.IsServer()) return;
+            string[] territoryList = pkg.ReadString().Split('|');
+            MapDrawer.CreateMapDrawing(territoryList);
         }
 
         public static void RPC_FileSyncClient(long sender, ZPackage pkg)
@@ -41,6 +74,9 @@ namespace RaidSystem
             if (json == "") return;
             new PlayerInfoService().SetPlayerInfoList(json);
             GUI.LoadMenu();
+            ZPackage toSend = new();
+
+            ZRoutedRpc.instance.InvokeRoutedRPC(ZRoutedRpc.instance.GetServerPeerID(), "GetTerritoriesInfoToDraw", new ZPackage());
         }
 
         public static void RPC_UpdateOrSaveData(long sender, ZPackage pkg)
@@ -78,7 +114,7 @@ namespace RaidSystem
             ZPackage package = new ZPackage();
             package.Write(playerInfoListJson);
 
-            ZRoutedRpc.instance.InvokeRoutedRPC(ZRoutedRpc.Everybody, "FileSyncClient", package);
+            ZRoutedRpc.instance.InvokeRoutedRPC(ZRoutedRpc.Everybody, "FileSyncClientRaidSystem", package);
         }
 
         [HarmonyPatch(typeof(Game), "Start")]
@@ -89,9 +125,13 @@ namespace RaidSystem
                 if (ZRoutedRpc.instance == null)
                     return;
 
-                ZRoutedRpc.instance.Register<ZPackage>("FileSync", new Action<long, ZPackage>(RPC_FileSync));
-                ZRoutedRpc.instance.Register<ZPackage>("FileSyncClient", new Action<long, ZPackage>(RPC_FileSyncClient));
-                ZRoutedRpc.instance.Register<ZPackage>("UpdateOrSaveData", new Action<long, ZPackage>(RPC_UpdateOrSaveData));
+                ZRoutedRpc.instance.Register<ZPackage>("FileSyncRaidSystem", new Action<long, ZPackage>(RPC_FileSync));
+                ZRoutedRpc.instance.Register<ZPackage>("FileSyncClientRaidSystem", new Action<long, ZPackage>(RPC_FileSyncClient));
+                ZRoutedRpc.instance.Register<ZPackage>("UpdateOrSaveDataRaidSystem", new Action<long, ZPackage>(RPC_UpdateOrSaveData));
+                ZRoutedRpc.instance.Register<ZPackage>("TerritoriesSyncRaidSystem", new Action<long, ZPackage>(RPC_TerritoriesSync));
+                ZRoutedRpc.instance.Register<ZPackage>("TerritoriesClientRaidSystem", new Action<long, ZPackage>(RPC_TerritoriesSyncClient));
+                ZRoutedRpc.instance.Register<ZPackage>("GetTerritoriesInfoToDraw", new Action<long, ZPackage>(RPC_GetTerritoriesInfoToDraw));
+                ZRoutedRpc.instance.Register<ZPackage>("GetTerritoriesInfoToDrawClient", new Action<long, ZPackage>(RPC_GetTerritoriesInfoToDrawClient));
             }
         }
     }

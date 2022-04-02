@@ -8,7 +8,7 @@ namespace RaidSystem
 {
     public static class Util
     {
-        public static string GetTerritoriesConquestedText()
+        public static string GetTerritoriesConquestedText(string playerTeam)
         {
             string redPrefab = ("RS_" + RaidSystem.TeamRedPrefab.Value);
             string bluePrefab = ("RS_" + RaidSystem.TeamBluePrefab.Value);
@@ -17,13 +17,41 @@ namespace RaidSystem
             int countBlue = GetPrefabCount(bluePrefab.GetStableHashCode());
             int total = countRed + countBlue;
 
-            return (RaidSystem.localPlayerInfo.Team == "Blue" ? countBlue : countRed) + "/" + total;
+            return (playerTeam == "Blue" ? countBlue : countRed) + "/" + total;
+        }
+
+        public static string GetTerritoriesInfoInString()
+        {
+            string territories = "";
+            int redPrefab = ("RS_" + RaidSystem.TeamRedPrefab.Value).GetStableHashCode();
+            int bluePrefab = ("RS_" + RaidSystem.TeamBluePrefab.Value).GetStableHashCode();
+
+            foreach (List<ZDO> zdoList in ZDOMan.instance.m_objectsBySector)
+            {
+                if (zdoList == null) continue;
+
+                for (int index = 0; index < zdoList.Count; ++index)
+                {
+                    ZDO zdo2 = zdoList[index];
+                    if (zdo2.GetPrefab() == redPrefab)
+                    {
+                        territories += "Red," + (int)zdo2.m_position.x + "," + (int)zdo2.m_position.y + "," + (int)zdo2.m_position.z;
+                        territories += "|";
+                    }
+                    else if (zdo2.GetPrefab() == bluePrefab)
+                    {
+                        territories += "Blue," + (int)zdo2.m_position.x + "," + (int)zdo2.m_position.y + "," + (int)zdo2.m_position.z;
+                        territories += "|";
+                    }
+                }
+            }
+
+            return territories;
         }
 
 
         private static int GetPrefabCount(int prefabHash)
         {
-            long creatorID = Player.m_localPlayer.GetPlayerID();
             int prefabCount = 0;
             foreach (List<ZDO> zdoList in ZDOMan.instance.m_objectsBySector)
             {

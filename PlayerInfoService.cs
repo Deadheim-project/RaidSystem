@@ -33,7 +33,7 @@ namespace RaidSystem
             msg += team;
             pkg.Write(msg);
 
-            ZRoutedRpc.instance.InvokeRoutedRPC(ZRoutedRpc.instance.GetServerPeerID(), "UpdateOrSaveData", pkg);
+            ZRoutedRpc.instance.InvokeRoutedRPC(ZRoutedRpc.instance.GetServerPeerID(), "UpdateOrSaveDataRaidSystem", pkg);
             GUIChooseTeam.DestroyMenu();
         }
 
