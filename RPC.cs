@@ -74,7 +74,6 @@ namespace RaidSystem
             if (json == "") return;
             new PlayerInfoService().SetPlayerInfoList(json);
             GUI.LoadMenu();
-            ZPackage toSend = new();
 
             ZRoutedRpc.instance.InvokeRoutedRPC(ZRoutedRpc.instance.GetServerPeerID(), "GetTerritoriesInfoToDraw", new ZPackage());
         }

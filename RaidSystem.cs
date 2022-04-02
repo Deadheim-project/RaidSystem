@@ -28,7 +28,7 @@ namespace RaidSystem
         public static ConfigEntry<string> TeamBlueAlias;
         public static ConfigEntry<string> TeamRedAlias;
         public static ConfigEntry<float> ColorAlfa;
-
+        public static ConfigEntry<int> RadiusDrawMap;
 
         public static ConfigEntry<string> TeamBlueColorOverlap;
         public static ConfigEntry<string> TeamRedColorOverlap;
@@ -68,6 +68,10 @@ namespace RaidSystem
         private void Awake()
         {
             Config.SaveOnConfigSet = true;
+
+            RadiusDrawMap = Config.Bind("Server config", "RadiusDrawMap", 300,
+new ConfigDescription("300", null,
+new ConfigurationManagerAttributes { IsAdminOnly = true }));
 
             ColorAlfa = Config.Bind("Server config", "ColorAlfa",0.7f,
 new ConfigDescription("0.1f,1f", null,

@@ -26,7 +26,9 @@ namespace RaidSystem
         {
             var pinOverlay = MinimapManager.Instance.GetMapDrawing("RaidSystem");
 
-            int radius = (int) (RaidSystem.AreaRadius.Value / 4);
+            int radius = RaidSystem.RadiusDrawMap.Value;
+
+            if (radius == 0) return;
 
             foreach (string teamPosition in teamPositions)
             {
@@ -43,7 +45,7 @@ namespace RaidSystem
                     color = Colors[RaidSystem.TeamRedColorOverlap.Value];
                 }
 
-                color.a = 0.5f;
+                color.a = RaidSystem.ColorAlfa.Value;
 
                 string x = teamPosition.Split(',')[1];
                 string y = teamPosition.Split(',')[2];
