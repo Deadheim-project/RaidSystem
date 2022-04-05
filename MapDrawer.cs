@@ -24,11 +24,11 @@ namespace RaidSystem
 
         public static void CreateMapDrawing(string[] teamPositions)
         {
-            var pinOverlay = MinimapManager.Instance.GetMapDrawing("RaidSystem");
-
             int radius = RaidSystem.RadiusDrawMap.Value;
 
             if (radius == 0) return;
+
+            var pinOverlay = MinimapManager.Instance.GetMapDrawing("RaidSystem");
 
             foreach (string teamPosition in teamPositions)
             {
@@ -53,14 +53,12 @@ namespace RaidSystem
 
                 var pos = MinimapManager.Instance.WorldToOverlayCoords(new Vector3(float.Parse(x), float.Parse(y), float.Parse(z)), pinOverlay.TextureSize);
 
-                Circle(pinOverlay.MainTex, (int)pos.x, (int)pos.y, radius, color);
+                Circle(pinOverlay.MainTex, (int)pos.x, (int)pos.y, radius, color);  
                 Circle(pinOverlay.HeightFilter, (int)pos.x, (int)pos.y, radius, MinimapManager.MeadowHeight);
                 Circle(pinOverlay.ForestFilter, (int)pos.x, (int)pos.y, radius, MinimapManager.FilterOff);
-                Circle(pinOverlay.FogFilter, (int)pos.x, (int)pos.y, radius, MinimapManager.FilterOff);
             }
 
             pinOverlay.MainTex.Apply();
-            pinOverlay.FogFilter.Apply();
             pinOverlay.ForestFilter.Apply();
             pinOverlay.HeightFilter.Apply();
         }

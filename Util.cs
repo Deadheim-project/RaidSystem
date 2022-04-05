@@ -69,13 +69,18 @@ namespace RaidSystem
             return prefabCount;
         }
 
-        public static void RespawnPrefab(string prefab, string alias, Vector3 position, Quaternion rotation)
+        public static void RespawnPrefab(string prefab, string alias, Vector3 position, Quaternion rotation, string crafterName = "")
         {
             Task.Run(async () =>
             {
                 await Task.Delay(RaidSystem.SpawnDelayMS.Value);
                 GameObject bluePrefab = PrefabManager.Instance.GetPrefab(prefab);
-                UnityEngine.Object.Instantiate<GameObject>(bluePrefab, position, rotation);
+                GameObject instatiated = UnityEngine.Object.Instantiate<GameObject>(bluePrefab, position, rotation);
+
+                if (crafterName is not "")
+                {
+                    instatiated.GetComponent<ItemDrop>().m_itemData.m_crafterName = crafterName;
+                }
 
                 DiscordApi.SendMessage("**" + alias + " - " + RaidSystem.ConquestMessage.Value + " X: " + (int)position.x + " Z:" + (int)position.z + "**");
             });

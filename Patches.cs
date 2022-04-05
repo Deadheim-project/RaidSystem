@@ -1,11 +1,10 @@
 ﻿using HarmonyLib;
-using Jotunn.Managers;
 using Steamworks;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading.Tasks;
 using UnityEngine;
+using static RaidSystem.PlayerInfoService;
 
 namespace RaidSystem
 {
@@ -110,8 +109,6 @@ namespace RaidSystem
                     if (___m_nview is null) return false;
                     if (!PrivateArea.CheckInPrivateArea(__instance.transform.position)) return true;
                     if (!Util.IsRaidEnabledHere(__instance.transform.position)) return false;
-                    if (___m_nview is null) return false;
-                    if (__instance.gameObject.name.Contains("guard_stone")) return false;
 
                     if (Util.IsRaidDisabledThisTime()) return false;
 
@@ -123,7 +120,34 @@ namespace RaidSystem
                     Debug.LogError(e.Message + "    - " + e.StackTrace);
                     return false;
                 }
-            }  
+            }
+        }
+
+        [HarmonyPatch(typeof(Character), nameof(Character.ApplyDamage))]
+        public static class ApplyDamage
+        {
+            public static void Postfix(Character __instance, HitData hit)
+            {
+                if (!(__instance.GetHealth() <= 0f)) return;
+
+                if (!hit.GetAttacker()) return;
+                if (!hit.GetAttacker().IsPlayer()) return;
+                if (!__instance.IsPlayer()) return;
+
+                Player killer = (Player)hit.GetAttacker();
+                PlayerInfo playerInfo = RaidSystem.PlayerInfoList.FirstOrDefault(x => x.PlayerId == killer.GetPlayerID().ToString());
+                if (playerInfo is null) return;
+
+                Player deadPlayer = (Player)__instance;
+                PlayerInfo deadPlayerInfo = RaidSystem.PlayerInfoList.FirstOrDefault(x => x.PlayerId == deadPlayer.GetPlayerID().ToString());
+
+                if (deadPlayerInfo is null) return;
+                if (playerInfo.Team == deadPlayerInfo.Team) return;
+
+                GameObject trophyToSpawn = deadPlayerInfo.Team == "Blue" ? RaidSystem.blueTrophy : RaidSystem.redTrophy;
+                killer.m_inventory.AddItem(trophyToSpawn, 1);
+
+            }
         }
     }
 }

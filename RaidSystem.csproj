@@ -46,6 +46,7 @@
     <Compile Include="PlayerInfoService.cs" />
     <Compile Include="RaidSystem.cs" />
     <Compile Include="RPC.cs" />
+    <Compile Include="Cloning.cs" />
     <Compile Include="Util.cs" />
   </ItemGroup>
   <ItemGroup>

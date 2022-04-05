@@ -1,25 +1,22 @@
 ﻿using BepInEx;
 using BepInEx.Configuration;
 using HarmonyLib;
-using System.Linq;
 using System.IO;
 using UnityEngine;
 using Jotunn.Managers;
 using Jotunn.Utils;
 using System.Collections.Generic;
-using System.Threading.Tasks;
 using static RaidSystem.PlayerInfoService;
-using Jotunn;
 
 namespace RaidSystem
 {
     [BepInPlugin(PluginGUID, PluginGUID, Version)]
     [BepInDependency(Jotunn.Main.ModGuid)]
-    [NetworkCompatibility(CompatibilityLevel.EveryoneMustHaveMod, VersionStrictness.Minor)]
+    [NetworkCompatibility(CompatibilityLevel.EveryoneMustHaveMod, VersionStrictness.Patch)]
     public class RaidSystem : BaseUnityPlugin
     {
         public const string PluginGUID = "Detalhes.RaidSystem";
-        public const string Version = "1.1.0";
+        public const string Version = "1.3.1";
         Harmony harmony = new Harmony(PluginGUID);
         public static readonly string ModPath = Path.GetDirectoryName(typeof(RaidSystem).Assembly.Location);
 
@@ -44,6 +41,7 @@ namespace RaidSystem
         public static ConfigEntry<string> ButtonUpdateText;
         public static ConfigEntry<string> TeamMemberListText;
         public static ConfigEntry<string> TerritoriesConquestedText;
+        public static ConfigEntry<string> Cost;
 
         public static ConfigEntry<int> HitPoints;
         public static ConfigEntry<int> AreaRadius;
@@ -51,11 +49,16 @@ namespace RaidSystem
         public static ConfigEntry<int> Scale;
         public static ConfigEntry<float> WardReductionDamage;
         public static ConfigEntry<bool> RespawnOtherTeamWard;
+        public static ConfigEntry<bool> OnlyAdminCanBuild;
+        public static ConfigEntry<bool> RemoveTokenCost;
         public static ConfigEntry<KeyCode> KeyboardShortcut;
-
+ 
         public static List<PlayerInfo> PlayerInfoList = new();
         public static bool HasTeam = false;
         public static PlayerInfo localPlayerInfo;
+
+        public static GameObject blueTrophy;
+        public static GameObject redTrophy;
 
         public static Dictionary<string, GameObject> menuItems = new Dictionary<string, GameObject>();
         public static GameObject Menu;
@@ -69,9 +72,30 @@ namespace RaidSystem
         {
             Config.SaveOnConfigSet = true;
 
-            RadiusDrawMap = Config.Bind("Server config", "RadiusDrawMap", 300,
-new ConfigDescription("300", null,
+            RemoveTokenCost = Config.Bind("Craft Server config", "RemoveTokenCost", false,
+new ConfigDescription("RemoveTokenCost", null,
 new ConfigurationManagerAttributes { IsAdminOnly = true }));
+
+            OnlyAdminCanBuild = Config.Bind("Craft Server config", "OnlyAdminCanBuild", true,
+new ConfigDescription("OnlyAdminCanBuild", null,
+new ConfigurationManagerAttributes { IsAdminOnly = true }));
+
+
+            Cost = Config.Bind("Craft Server config", "Cost", "wood:1000:false,stone:1000:false",
+            new ConfigDescription("Cost", null,
+            new ConfigurationManagerAttributes { IsAdminOnly = true }));
+
+            TeamBluePrefab = Config.Bind("Craft Server config", "TeamBluePrefab", "$custompiece_wolf",
+            new ConfigDescription("TeamBluePrefab", null,
+            new ConfigurationManagerAttributes { IsAdminOnly = true }));
+
+            TeamRedPrefab = Config.Bind("Craft Server config", "TeamRedPrefab", "$custompiece_elk",
+            new ConfigDescription("TeamRedPrefab", null,
+            new ConfigurationManagerAttributes { IsAdminOnly = true }));
+
+            RadiusDrawMap = Config.Bind("Server config", "RadiusDrawMap", 30,
+new ConfigDescription("300", null,
+new ConfigurationManagerAttributes { IsAdminOnly = true }));      
 
             ColorAlfa = Config.Bind("Server config", "ColorAlfa",0.7f,
 new ConfigDescription("0.1f,1f", null,
@@ -129,15 +153,7 @@ new ConfigDescription("RaidEnabledPositions", null,
 
             AdminList = Config.Bind("Server config", "AdminList", "steamid steamid",
         new ConfigDescription("AdminList", null,
-        new ConfigurationManagerAttributes { IsAdminOnly = true }));
-
-            TeamBluePrefab = Config.Bind("Server config", "TeamBluePrefab", "$custompiece_wolf",
-            new ConfigDescription("TeamBluePrefab", null,
-            new ConfigurationManagerAttributes { IsAdminOnly = true }));
-
-            TeamRedPrefab = Config.Bind("Server config", "TeamRedPrefab", "$custompiece_elk",
-            new ConfigDescription("TeamRedPrefab", null,
-            new ConfigurationManagerAttributes { IsAdminOnly = true }));
+        new ConfigurationManagerAttributes { IsAdminOnly = true })); 
 
             TeamBlueAlias = Config.Bind("Server config", "TeamBlueAlias", "Bretonnia",
             new ConfigDescription("TeamBlueAlias", null,
@@ -174,11 +190,14 @@ new ConfigurationManagerAttributes { IsAdminOnly = true }));
 
             harmony.PatchAll();
 
+            Cloning.LoadAssets();
+
             SynchronizationManager.OnConfigurationSynchronized += (obj, attr) =>
             {
                 if (attr.InitialSynchronization)
                 {
-                    AddClonedItems();
+                    Cloning.AddCustomPrivateAreas();
+                    Cloning.AddTrophies();              
                 }
                 else
                 {
@@ -201,67 +220,5 @@ new ConfigurationManagerAttributes { IsAdminOnly = true }));
             }
         }
 
-        public static void AddClonedItems()
-        {
-            var hammer = ObjectDB.instance.m_items.FirstOrDefault(x => x.name == "Hammer");
-
-            PieceTable table = hammer.GetComponent<ItemDrop>().m_itemData.m_shared.m_buildPieces;
-
-            foreach (string prefab in new List<string> { TeamBluePrefab.Value, TeamRedPrefab.Value })
-            {
-                string newName = "RS_" + prefab;
-
-                if (table.m_pieces.Exists(x => x.name == newName))
-                {
-                    continue;
-                }
-
-                GameObject customRaidWard = PrefabManager.Instance.CreateClonedPrefab(newName, prefab);
-                if (!customRaidWard)
-                {
-                    Debug.LogError("original prefab not found for " + prefab);
-                    continue;
-                }
-
-                Piece piece = customRaidWard.GetComponent<Piece>();
-                if (piece is null) piece = customRaidWard.AddComponent<Piece>();
-
-                WearNTear wearNTear = customRaidWard.GetComponent<WearNTear>();
-                if (!wearNTear) customRaidWard.AddComponent<WearNTear>();
-                wearNTear.m_health = HitPoints.Value;
-
-                piece.m_description = TeamBluePrefab.Value == prefab ? TeamBlueAlias.Value : TeamRedAlias.Value;
-                piece.m_name = customRaidWard.name;
-
-                PrivateArea privateArea = customRaidWard.AddComponent<PrivateArea>();
-                PrivateArea guardStonePrivateARea = PrefabManager.Instance.GetPrefab("guard_stone").GetComponent<PrivateArea>();
-                privateArea.m_radius = AreaRadius.Value;
-                privateArea.m_name = newName;
-                privateArea.m_removedPermittedEffect = guardStonePrivateARea.m_removedPermittedEffect;
-                privateArea.m_flashEffect = guardStonePrivateARea.m_flashEffect;
-                privateArea.m_activateEffect = guardStonePrivateARea.m_activateEffect;
-                privateArea.m_addPermittedEffect = guardStonePrivateARea.m_addPermittedEffect;
-                privateArea.m_connectEffect = guardStonePrivateARea.m_connectEffect;
-                privateArea.m_deactivateEffect = guardStonePrivateARea.m_deactivateEffect;
-                privateArea.m_model = guardStonePrivateARea.m_model;
-                privateArea.m_connectEffect = guardStonePrivateARea.m_connectEffect;
-                privateArea.m_inRangeEffect = guardStonePrivateARea.m_inRangeEffect;
-                privateArea.m_areaMarker = guardStonePrivateARea.m_areaMarker;
-                privateArea.m_enabledEffect = guardStonePrivateARea.m_enabledEffect;
-
-                Vector3 newScale = piece.transform.transform.localScale;
-                newScale.x *= Scale.Value;
-                newScale.y *= Scale.Value;
-                newScale.z *= Scale.Value;
-                piece.transform.localScale = newScale;
-
-                PieceManager.Instance.RegisterPieceInPieceTable(customRaidWard, "Hammer", "RaidSystem");
-
-                if (!SynchronizationManager.Instance.PlayerIsAdmin)
-                {
-                    table.m_pieces.Remove(customRaidWard);
-                }
-            }
-        }
     }
 }
