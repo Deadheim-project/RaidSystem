@@ -1,41 +1,25 @@
 ﻿using HarmonyLib;
+using Jotunn.Managers;
 using Steamworks;
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
-using static RaidSystem.PlayerInfoService;
 
 namespace RaidSystem
 {
     [HarmonyPatch]
     public class Patches
     {
-        [HarmonyPatch(typeof(WearNTear), nameof(WearNTear.Destroy))]
+        public static bool hasAwake;
+
+        [HarmonyPatch(typeof(WearNTear), "Destroy")]
         public static class Destroy
         {
             private static void Postfix(WearNTear __instance)
             {
-                if (!RaidSystem.RespawnOtherTeamWard.Value) return;
-
-                string redPrefab = ("RS_" + RaidSystem.TeamRedPrefab.Value);
-                string bluePrefab = ("RS_" + RaidSystem.TeamBluePrefab.Value);
-
-                if (__instance.m_piece.gameObject.name.Contains(bluePrefab)) Util.RespawnPrefab(redPrefab, RaidSystem.TeamBlueAlias.Value, __instance.transform.position, __instance.transform.rotation);
-                else if (__instance.m_piece.gameObject.name.Contains(redPrefab)) Util.RespawnPrefab(bluePrefab, RaidSystem.TeamRedAlias.Value, __instance.transform.position, __instance.transform.rotation);
-            }
-        }
-
-        [HarmonyPatch(typeof(Player), "CheckCanRemovePiece")]
-        public static class CheckCanRemovePiece
-        {
-            [HarmonyPriority(Priority.Last)]
-            private static bool Prefix(Piece piece, Player __instance)
-            {
-                var prefabs = new List<string> { "RS_" + RaidSystem.TeamBluePrefab.Value, "RS_" + RaidSystem.TeamRedPrefab.Value };
-                if (prefabs.Where(x => piece.gameObject.name.Contains(x)).Any()) return false;
-
-                return true;
+                if (!__instance.m_piece.gameObject.name.Contains("RaidWard"))
+                    return;
+                Util.RespawnPrefab("RaidWard", "Castelo Consquitado", ((Component)__instance).transform.position, ((Component)__instance).transform.rotation);
             }
         }
 
@@ -44,21 +28,16 @@ namespace RaidSystem
         {
             public static void Postfix(ZNet __instance, ZNetPeer peer)
             {
-                if (!__instance.IsServer())
-                {
-                    RaidSystem.SteamId = SteamUser.GetSteamID().ToString();
-                }
+                if (__instance.IsServer())
+                    return;
+                RaidSystem.SteamId = SteamUser.GetSteamID().ToString();
             }
         }
 
-        public static bool hasAwake = false;
         [HarmonyPatch(typeof(Game), "Logout")]
         public static class Logout
         {
-            private static void Postfix()
-            {
-                hasAwake = false;
-            }
+            private static void Postfix() => Patches.hasAwake = false;
         }
 
         [HarmonyPatch(typeof(Player), "OnSpawned")]
@@ -66,87 +45,79 @@ namespace RaidSystem
         {
             private static void Postfix()
             {
-                if (hasAwake == true) return;
-                hasAwake = true;
-
-                ZRoutedRpc.instance.InvokeRoutedRPC(ZRoutedRpc.instance.GetServerPeerID(), "FileSyncRaidSystem", new ZPackage());
+                if (Patches.hasAwake)
+                    return;
+                Patches.hasAwake = true;
+                ZRoutedRpc.instance.InvokeRoutedRPC(ZRoutedRpc.instance.GetServerPeerID(), "FileSyncRaidSystem", new object[1]
+                {
+          (object) new ZPackage()
+                });
             }
         }
 
-        [HarmonyPatch(typeof(PrivateArea), nameof(PrivateArea.RPC_TogglePermitted))]
-        public static class RPC_TogglePermitted
+        [HarmonyPatch(typeof(Player), "CheckCanRemovePiece")]
+        public static class CheckCanRemovePiece
         {
-            private static bool Prefix(PrivateArea __instance, long uid, long playerID, string name)
-            {
-                string redPrefab = ("RS_" + RaidSystem.TeamRedPrefab.Value);
-                string bluePrefab = ("RS_" + RaidSystem.TeamBluePrefab.Value);
+            [HarmonyPriority(0)]
+            private static bool Prefix(Piece piece, Player __instance) => SynchronizationManager.Instance.PlayerIsAdmin || !Util.IsRaidEnabledHere(((Component)piece).transform.position);
+        }
 
-                string prefabName = __instance.m_piece.gameObject.name;
-                if (prefabName.Contains("guard_stone")) return true;
-
-                if (prefabName.Contains(redPrefab))
-                {
-                    if (RaidSystem.PlayerInfoList.Exists(x => x.PlayerId == playerID.ToString() && x.Team == "Red")) return true;
-                }
-
-                if (prefabName.Contains(bluePrefab))
-                {
-                    if (RaidSystem.PlayerInfoList.Exists(x => x.PlayerId == playerID.ToString() && x.Team == "Blue")) return true;
-                }
-
-                return false;
-            }
+        [HarmonyPatch(typeof(Player), "PlacePiece")]
+        public static class NoBuild_Patch
+        {
+            [HarmonyPriority(800)]
+            private static bool Prefix(Piece piece, Player __instance) => SynchronizationManager.Instance.PlayerIsAdmin || !Util.IsRaidEnabledHere(((Component)__instance).transform.position) || piece.gameObject.GetComponent<Door>();
         }
 
         [HarmonyPatch(typeof(WearNTear), "RPC_Damage")]
         public static class RPC_Damage
         {
-            [HarmonyPriority(Priority.Last)]
+            [HarmonyPriority(0)]
             private static bool Prefix(WearNTear __instance, ref HitData hit, ZNetView ___m_nview)
             {
                 try
                 {
-                    if (___m_nview is null) return false;
-                    if (!PrivateArea.CheckInPrivateArea(__instance.transform.position)) return true;
-                    if (!Util.IsRaidEnabledHere(__instance.transform.position)) return false;
-
-                    if (Util.IsRaidDisabledThisTime()) return false;
-
-                    hit.ApplyModifier(1 - (RaidSystem.WardReductionDamage.Value / 100));
+                    if (___m_nview == null)
+                        return false;
+                    bool flag = Util.IsRaidEnabledHere(((Component)__instance).transform.position);
+                    if (!Util.CheckInPrivateArea(((Component)__instance).transform.position, false) && !flag)
+                        return true;
+                    if (!flag || Util.IsRaidDisabledThisTime() || !__instance.gameObject.name.Contains("RaidWard") && !__instance.gameObject.GetComponent<Door>())
+                        return false;
+                    hit.ApplyModifier((float)(1.0 - (double)RaidSystem.WardReductionDamage.Value / 100.0));
                     return true;
                 }
-                catch (Exception e)
+                catch (Exception ex)
                 {
-                    Debug.LogError(e.Message + "    - " + e.StackTrace);
+                    Debug.LogError((object)(ex.Message + "    - " + ex.StackTrace));
                     return false;
                 }
             }
         }
 
-        [HarmonyPatch(typeof(Character), nameof(Character.ApplyDamage))]
+        [HarmonyPatch(typeof(Character), "ApplyDamage")]
         public static class ApplyDamage
         {
             public static void Postfix(Character __instance, HitData hit)
             {
-                if (!(__instance.GetHealth() <= 0f)) return;
-
-                if (!hit.GetAttacker()) return;
-                if (!hit.GetAttacker().IsPlayer()) return;
-                if (!__instance.IsPlayer()) return;
-
-                Player killer = (Player)hit.GetAttacker();
-                PlayerInfo playerInfo = RaidSystem.PlayerInfoList.FirstOrDefault(x => x.PlayerId == killer.GetPlayerID().ToString());
-                if (playerInfo is null) return;
-
-                Player deadPlayer = (Player)__instance;
-                PlayerInfo deadPlayerInfo = RaidSystem.PlayerInfoList.FirstOrDefault(x => x.PlayerId == deadPlayer.GetPlayerID().ToString());
-
-                if (deadPlayerInfo is null) return;
-                if (playerInfo.Team == deadPlayerInfo.Team) return;
-
-                GameObject trophyToSpawn = deadPlayerInfo.Team == "Blue" ? RaidSystem.blueTrophy : RaidSystem.redTrophy;
-                killer.m_inventory.AddItem(trophyToSpawn, 1);
-
+                try
+                {
+                    if ((double)__instance.GetHealth() > 0.0 || !hit.GetAttacker() || !hit.GetAttacker().IsPlayer() || !__instance.IsPlayer())
+                        return;
+                    Player killer = (Player)hit.GetAttacker();
+                    PlayerInfoService.PlayerInfo playerInfo1 = RaidSystem.PlayerInfoList.FirstOrDefault<PlayerInfoService.PlayerInfo>((Func<PlayerInfoService.PlayerInfo, bool>)(x => x.PlayerId == killer.GetPlayerID().ToString()));
+                    if (playerInfo1 == null)
+                        return;
+                    Player deadPlayer = (Player)__instance;
+                    PlayerInfoService.PlayerInfo playerInfo2 = RaidSystem.PlayerInfoList.FirstOrDefault<PlayerInfoService.PlayerInfo>((Func<PlayerInfoService.PlayerInfo, bool>)(x => x.PlayerId == deadPlayer.GetPlayerID().ToString()));
+                    if (playerInfo2 == null || playerInfo1.Team == playerInfo2.Team)
+                        return;
+                    UnityEngine.Object.Instantiate<GameObject>(playerInfo2.Team == "Blue" ? RaidSystem.blueTrophy : RaidSystem.redTrophy, ((Component)Player.m_localPlayer).transform.position, Quaternion.identity);
+                }
+                catch (Exception ex)
+                {
+                    Debug.Log((object)("Error droping player trophy " + ex.Message));
+                }
             }
         }
     }
