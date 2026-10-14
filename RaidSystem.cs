@@ -209,6 +209,8 @@ new ConfigurationManagerAttributes { IsAdminOnly = true }));
 
         private void Update()
         {
+            if (GUI.IsTyping()) return;
+
             if (Input.GetKeyDown(KeyboardShortcut.Value))
             {
                 Player localPlayer = Player.m_localPlayer;

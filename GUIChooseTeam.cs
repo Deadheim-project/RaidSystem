@@ -10,6 +10,8 @@ namespace RaidSystem
 
         public static void CreateChooseTeamMenu()
         {
+            if (GUI.IsTyping()) return;
+
             if (menu && menu.activeSelf)
             {
                 DestroyMenu();

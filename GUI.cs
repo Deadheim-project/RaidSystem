@@ -1,6 +1,7 @@
 ﻿using Jotunn.Managers;
 using System;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 using static RaidSystem.PlayerInfoService;
 using System.Linq;
@@ -12,6 +13,8 @@ namespace RaidSystem
     {
         public static void ToggleMenu()
         {
+            if (IsTyping()) return;
+
             if (RaidSystem.Menu is null || (Player.m_localPlayer && (RaidSystem.Menu && !RaidSystem.Menu.activeSelf)))
             {
                 if (GUIManager.Instance == null)
@@ -43,6 +46,21 @@ namespace RaidSystem
         public static void DestroyMenu()
         {
             RaidSystem.Menu.SetActive(false);
+        }
+
+        internal static bool IsTyping()
+        {
+            if ((Chat.instance != null && Chat.instance.HasFocus()) || Console.IsVisible() ||
+                (TextInput.instance != null && TextInput.IsVisible()))
+                return true;
+
+            GameObject selected = EventSystem.current != null ? EventSystem.current.currentSelectedGameObject : null;
+            if (!selected) return false;
+
+            InputField input = selected.GetComponentInParent<InputField>();
+            if (input && input.isFocused) return true;
+
+            return false;
         }
 
         public static void LoadMenu()
